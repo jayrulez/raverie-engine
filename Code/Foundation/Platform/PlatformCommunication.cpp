@@ -2,7 +2,6 @@
 #include "PlatformCommunication.hpp"
 
 extern "C" {
-
 void ExportKeyDown(Zero::Keys::Enum key, uint osKey, bool repeated) {
   printf("ExportKeyDown\n");
 }
@@ -16,5 +15,3 @@ void ExportQuit() {
 }
 
 }
-
-//} // namespace Zero

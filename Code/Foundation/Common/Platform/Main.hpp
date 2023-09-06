@@ -4,14 +4,12 @@
 namespace Zero
 {
 extern ZeroShared Array<String> gCommandLineArguments;
+extern size_t gCommandLineBufferLength;
+extern char* gCommandLineBuffer;
 
 // Not platform specific
 typedef OrderedHashMap<String, String> StringMap;
-void CommandLineToStringArray(Array<String>& strings, cstr* argv, int numberOfParameters);
-void CommandLineToStringArray(Array<String>& strings, char** argv, int numberOfParameters);
+void CommandLineToStringArray();
 bool ParseCommandLineStringArray(StringMap& parsedCommandLineArguments, Array<String>& commandLineArguments);
 
 } // namespace Zero
-
-// Everyone implements this main instead of platform specific mains.
-extern "C" int main(int argc, char* argv[]);

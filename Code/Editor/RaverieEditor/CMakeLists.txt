@@ -8,10 +8,9 @@ target_sources(RaverieEditor
     ${CMAKE_CURRENT_LIST_DIR}/GameOrEditorStartup.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GameOrEditorStartup.hpp
     ${CMAKE_CURRENT_LIST_DIR}/Main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Wasi.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Precompiled.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Precompiled.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/ZeroCrashCallbacks.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/ZeroCrashCallbacks.hpp
 )
 
 target_link_libraries(RaverieEditor
@@ -42,7 +41,6 @@ target_link_libraries(RaverieEditor
     SpirvCross
     SpirvHeaders
     SpirvTools
-    Startup
     Support
     UiWidget
     Widget
@@ -50,4 +48,5 @@ target_link_libraries(RaverieEditor
     Zilch
     ZilchScript
     ZilchShaders
+    Exceptions
 )

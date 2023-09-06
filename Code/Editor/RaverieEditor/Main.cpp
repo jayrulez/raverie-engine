@@ -3,15 +3,26 @@
 
 using namespace Zero;
 
-extern "C" int main(int argc, char* argv[])
-{
-  ZPrint("argc: %d\n", argc);
-  for (int i = 0; i < argc; ++i) {
-    ZPrint("argv[%d]: %s\n", i, argv[i]);
-  }
-  
-  CommandLineToStringArray(gCommandLineArguments, argv, argc);
-  SetupApplication(1, sRaverieOrganization, sEditorGuid, sEditorName);
+static GameOrEditorStartup* startup = nullptr;
 
-  return (new GameOrEditorStartup())->Run();
+extern "C" {
+void __wasm_call_ctors();
+}
+
+char* ExportInitialize(size_t argumentsLength) {
+  __wasm_call_ctors();
+  startup = new GameOrEditorStartup();
+  gCommandLineBuffer = new char[argumentsLength];
+  gCommandLineBufferLength = argumentsLength;
+  return gCommandLineBuffer;
+}
+
+void ExportRunIteration() {
+  startup->RunIteration();
+}
+
+// We don't actually use main since our exeuctable is initialized externally
+int main(int argc, char* argv[])
+{
+  return 0;
 }

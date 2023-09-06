@@ -172,7 +172,6 @@ void Engine::Update()
 
     ++mFrameCounter;
   }
-  YieldToOs();
 }
 
 void Engine::Terminate()
@@ -449,9 +448,7 @@ void FatalEngineError(cstr format, ...)
 
   OsShell* shell = Z::gEngine->has(OsShell);
   shell->ShowMessageBox("Core Engine Error", finalMessage);
-
-  // Terminate
-  CrashHandler::FatalError(1);
+  abort();
 }
 
 } // namespace Zero

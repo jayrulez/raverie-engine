@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Foundation/Common/CommonStandard.hpp"
-#include "Foundation/Common/Platform/PlatformStandard.hpp"
 
 #include "SDL.h"
 
@@ -24,6 +23,5 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <fcntl.h>
 #include <errno.h>
 #include <utime.h>

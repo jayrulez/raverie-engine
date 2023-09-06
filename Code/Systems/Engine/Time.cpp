@@ -131,9 +131,6 @@ void TimeSpace::SetTimeScale(float timeScale)
 
 void TimeSpace::Update(float dt)
 {
-  // Enable for logic update loop only in debug
-  FpuExceptionsEnablerDebug();
-
   Space* space = GetSpace();
 
   // If this is a preview space and we're sending out update (should include any
@@ -309,10 +306,6 @@ void TimeSystem::Update(bool debugger)
   }
 
   ProfileScopeTree("TimeSystem", "Engine", Color::Orange);
-
-  // We can pretend that the rest of the engine runs at a fixed frame rate
-  if (gDeterministicMode)
-    dt = cFixedDt;
 
   mEngineDt = dt;
   mEngineRuntime = mTimer.Time();

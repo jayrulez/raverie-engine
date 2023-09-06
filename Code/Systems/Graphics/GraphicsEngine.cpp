@@ -1,6 +1,8 @@
 // MIT Licensed (see LICENSE.md).
 
 #include "Precompiled.hpp"
+#include "Foundation/Platform/PlatformCommunication.hpp"
+
 #define RaverieLazyShaderCompositing
 
 namespace Zero
@@ -266,6 +268,11 @@ void GraphicsEngine::Update(bool debugger)
   if (ThreadingEnabled && mShowProgressJob->IsRunning())
     return;
 
+  // Do any deferred tasks
+  if (!ThreadingEnabled) {
+    RendererThreadMain(mRendererJobQueue);
+  }
+
   ZilchManager::GetInstance()->mDebugger.DoNotAllowBreakReason =
       "Cannot currently break within the graphics engine because it must "
       "continue running in editor";
@@ -503,18 +510,8 @@ void GraphicsEngine::UpdateProgress(ProgressEvent* event)
   // want to do a full render for every single resource that is loaded.
   if (!ThreadingEnabled)
   {
-    static const size_t cProgressUpdateInterval = 10;
-    static size_t sProgressUpdateFrame = 0;
-    if (sProgressUpdateFrame == 0) {
-      InitialLoadingCompleted();
-    }
-
-    if (sProgressUpdateFrame % cProgressUpdateInterval == 0)
-    {
-      RendererThreadMain(mRendererJobQueue);
-      YieldToOs();
-    }
-    ++sProgressUpdateFrame;
+    ExecuteRendererJob(mShowProgressJob);
+    ImportYield();
   }
 }
 
@@ -666,10 +663,12 @@ void GraphicsEngine::CheckTextureYInvert(Texture* texture)
 
 void GraphicsEngine::AddRendererJob(RendererJob* rendererJob)
 {
-  mRendererJobQueue->AddJob(rendererJob);
-
-  if (!ThreadingEnabled)
-    RendererThreadMain(mRendererJobQueue);
+  if (ThreadingEnabled) {
+    mRendererJobQueue->AddJob(rendererJob);
+  } else {
+    // In single threaded mode, instantly execute the job
+    ExecuteRendererJob(rendererJob);
+  }
 }
 
 void GraphicsEngine::CreateRenderer(OsWindow* mainWindow)

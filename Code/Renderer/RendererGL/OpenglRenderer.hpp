@@ -1,6 +1,6 @@
 // MIT Licensed (see LICENSE.md).
 #pragma once
-#include "Foundation/Platform/Stub/PlatformCommunication.hpp"
+#include "Foundation/Platform/PlatformCommunication.hpp"
 
 namespace Zero
 {
@@ -39,6 +39,7 @@ class GlShader
 {
 public:
   GLuint mId;
+  HashMap<String, GLint> mLocations;
 };
 
 class GlMaterialRenderData : public MaterialRenderData
@@ -71,9 +72,7 @@ public:
 class OpenglRenderer : public Renderer
 {
 public:
-  // This must be called by the derived class after the OpenGL context has been
-  // created.
-  void Initialize(OsHandle windowHandle, OsHandle deviceContext, OsHandle renderContext, String& error);
+  OpenglRenderer();
 
   // This must be called by the derived class before the OpenGL context has been
   // destroyed.
@@ -98,6 +97,9 @@ public:
   void SetLazyShaderCompilation(bool isLazy) override;
   void AddShaders(Array<ShaderEntry>& entries, uint forceCompileBatchCount) override;
   void RemoveShaders(Array<ShaderEntry>& entries) override;
+  void DeleteShaderByKey(const ShaderKey& shaderKey);
+
+  GLint GetUniformLocation(GlShader* shader, StringParam name);
 
   void SetVSync(bool vsync) override;
 
@@ -132,7 +134,7 @@ public:
   GlShader* GetShader(ShaderKey& shaderKey);
   void CreateShader(ShaderEntry& entry);
   void CreateShader(StringParam vertexSource, StringParam geometrySource, StringParam pixelSource, GLuint& shader);
-  void SetShader(GLuint shader);
+  void SetShader(GlShader* shader);
 
   void DelayedRenderDataDestruction();
   void DestroyRenderData(GlMaterialRenderData* renderData);
@@ -144,42 +146,44 @@ public:
 
   UniformFunction mUniformFunctions[ShaderInputType::Count];
 
-  HashMap<ShaderKey, GlShader> mGlShaders;
+  HashMap<ShaderKey, GlShader*> mGlShaders;
   HashMap<ShaderKey, ShaderEntry> mShaderEntries;
 
-  bool mLazyShaderCompilation;
+  bool mLazyShaderCompilation = true;
 
-  GLuint mActiveShader;
-  GLuint mActiveTexture;
-  u64 mActiveMaterial;
-  uint mNextTextureSlot;
-  uint mNextTextureSlotMaterial;
+  GLuint mActiveShaderId = 0;
+  GlShader* mActiveShader = nullptr;
+  GLuint mActiveTexture = 0;
+  u64 mActiveMaterial = 0;
+  uint mNextTextureSlot = 0;
+  uint mNextTextureSlotMaterial = 0;
 
-  float mCurrentLineWidth;
-  bool mClipMode;
-  Vec4 mCurrentClip;
+  float mCurrentLineWidth = 1.0f;
+  bool mClipMode = false;
+  Vec4 mCurrentClip = Vec4::cZero;
   BlendSettings mCurrentBlendSettings;
 
-  OsHandle mWindow;
-  OsHandle mDeviceContext;
-  OsHandle mRenderContext;
-
-  RenderTasks* mRenderTasks;
-  RenderQueues* mRenderQueues;
-  FrameBlock* mFrameBlock;
-  ViewBlock* mViewBlock;
-  uint mShaderInputsId;
+  RenderTasks* mRenderTasks = nullptr;
+  RenderQueues* mRenderQueues = nullptr;
+  FrameBlock* mFrameBlock = nullptr;
+  ViewBlock* mViewBlock = nullptr;
+  uint mShaderInputsId = 0;
   String mRenderPassName;
 
-  IntVec2 mViewportSize;
+  IntVec2 mViewportSize = IntVec2::cZero;
 
-  GLuint mTriangleArray;
-  GLuint mTriangleVertex;
-  GLuint mTriangleIndex;
-  GLuint mLoadingShader;
+  GLuint mTriangleArray = 0;
+  GLuint mTriangleVertex = 0;
+  GLuint mTriangleIndex = 0;
+  GLuint mLoadingShader = 0;
+  GLint mLoadingTextureLoc = 0;
+  GLint mLoadingTransformLoc = 0;
+  GLint mLoadingUvTransformLoc = 0;
+  GLint mLoadingAlphaLoc = 0;
 
-  GLuint mSingleTargetFbo;
-  GLuint mMultiTargetFbo;
+
+  GLuint mSingleTargetFbo = 0;
+  GLuint mMultiTargetFbo = 0;
 
   StreamedVertexBuffer mStreamedVertexBuffer;
 
@@ -190,7 +194,7 @@ public:
   HashMap<u32, GLuint> mSamplers;
   HashSet<u32> mUnusedSamplers;
 
-  bool mVsync;
+  bool mVsync = false;
 };
 
 } // namespace Zero
