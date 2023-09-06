@@ -1,6 +1,8 @@
 // MIT Licensed (see LICENSE.md).
 
 #include "Precompiled.hpp"
+#include "Foundation/Platform/Stub/PlatformCommunication.hpp"
+
 #define RaverieLazyShaderCompositing
 
 namespace Zero
@@ -150,6 +152,13 @@ void GraphicsEngine::Initialize(SystemInitializer& initializer)
   mVerticalSync = false;
 }
 
+void GraphicsEngine::InitializeRenderer() {
+  InitializeRendererJob* rendererJob = new InitializeRendererJob();
+  AddRendererJob(rendererJob);
+  rendererJob->WaitOnThisJob();
+  delete rendererJob;
+}
+
 #if defined(RaverieLazyShaderCompositing)
 void CollectShadersRenderTaskRenderPass(RenderTaskRenderPass* task,
                                         ViewBlock* viewBlock,
@@ -265,6 +274,11 @@ void GraphicsEngine::Update(bool debugger)
   // Do not try to run rendering while this job is going.
   if (ThreadingEnabled && mShowProgressJob->IsRunning())
     return;
+
+  // Do any deferred tasks
+  if (!ThreadingEnabled) {
+    RendererThreadMain(mRendererJobQueue);
+  }
 
   ZilchManager::GetInstance()->mDebugger.DoNotAllowBreakReason =
       "Cannot currently break within the graphics engine because it must "
@@ -511,7 +525,7 @@ void GraphicsEngine::UpdateProgress(ProgressEvent* event)
 
     if (sProgressUpdateFrame % cProgressUpdateInterval == 0)
     {
-      RendererThreadMain(mRendererJobQueue);
+      ExecuteRendererJob(mShowProgressJob);
       YieldToOs();
     }
     ++sProgressUpdateFrame;
@@ -666,10 +680,12 @@ void GraphicsEngine::CheckTextureYInvert(Texture* texture)
 
 void GraphicsEngine::AddRendererJob(RendererJob* rendererJob)
 {
-  mRendererJobQueue->AddJob(rendererJob);
-
-  if (!ThreadingEnabled)
-    RendererThreadMain(mRendererJobQueue);
+  if (ThreadingEnabled || (gDeferImports && rendererJob->IsDeferrable())) {
+    mRendererJobQueue->AddJob(rendererJob);
+  } else {
+    // In single threaded mode, instantly execute the job
+    ExecuteRendererJob(rendererJob);
+  }
 }
 
 void GraphicsEngine::CreateRenderer(OsWindow* mainWindow)
