@@ -1,5 +1,6 @@
 // MIT Licensed (see LICENSE.md).
 #include "Precompiled.hpp"
+#include "Foundation/Platform/PlatformCommunication.hpp"
 
 namespace Zero
 {
@@ -40,28 +41,6 @@ ByteColor Shell::GetColorAtMouse()
   return 0;
 }
 
-void Shell::SetMonitorCursorClip(const IntRect& monitorRectangle)
-{
-}
-
-void Shell::ClearMonitorCursorClip()
-{
-}
-
-Cursor::Enum Shell::GetMouseCursor()
-{
-  return mCursor;
-}
-
-void Shell::SetMonitorCursorPosition(Math::IntVec2Param monitorPosition)
-{
-}
-
-Math::IntVec2 Shell::GetMonitorCursorPosition()
-{
-  return IntVec2::cZero;
-}
-
 bool Shell::IsKeyDown(Keys::Enum key)
 {
   return false;
@@ -69,12 +48,18 @@ bool Shell::IsKeyDown(Keys::Enum key)
 
 bool Shell::IsMouseDown(MouseButtons::Enum button)
 {
-  return false;
+  return mMouseState[button];
+}
+
+Cursor::Enum Shell::GetMouseCursor()
+{
+  return mCursor;
 }
 
 void Shell::SetMouseCursor(Cursor::Enum cursor)
 {
   mCursor = cursor;
+  ImportMouseSetCursor(cursor);
 }
 
 bool Shell::GetPrimaryMonitorImage(Image* image)
@@ -129,13 +114,9 @@ ShellWindow::ShellWindow(Shell* shell,
     mOnTextTyped(nullptr),
     mOnKeyDown(nullptr),
     mOnKeyUp(nullptr),
-    mOnMouseDown(nullptr),
-    mOnMouseUp(nullptr),
-    mOnMouseMove(nullptr),
     mOnMouseScrollY(nullptr),
     mOnMouseScrollX(nullptr),
     mOnDevicesChanged(nullptr),
-    mOnRawMouseChanged(nullptr),
     mOnInputDeviceChanged(nullptr)
 {
 }

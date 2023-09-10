@@ -258,11 +258,15 @@ void ZeroImportNamed(ImportGlViewport)(GLint x, GLint y, GLsizei width, GLsizei 
 void ZeroImportNamed(ImportPrintLine)(int32_t fd, const char* str, size_t length);
 double ZeroImportNamed(ImportClock)(int32_t clockId);
 void ZeroImportNamed(ImportYield)();
-//void (*CaptureMouse)(bool capture);
+void ZeroImportNamed(ImportMouseTrap)(bool value);
+void ZeroImportNamed(ImportMouseSetCursor)(Zero::Cursor::Enum cursor);
 
 char* ZeroExportNamed(ExportInitialize)(size_t argumentsLength);
 void ZeroExportNamed(ExportRunIteration)();
 void ZeroExportNamed(ExportHandleCrash)();
+void ZeroExportNamed(ExportMouseMove)(int32_t x, int32_t y, int32_t dx, int32_t dy);
+void ZeroExportNamed(ExportMouseDown)(int32_t x, int32_t y, Zero::MouseButtons::Enum button);
+void ZeroExportNamed(ExportMouseUp)(int32_t x, int32_t y, Zero::MouseButtons::Enum button);
 void ZeroExportNamed(ExportKeyDown)(Zero::Keys::Enum key, uint osKey, bool repeated);
 void ZeroExportNamed(ExportQuit)();
 

@@ -219,35 +219,6 @@ ByteColor Shell::GetColorAtMouse()
 }
 #endif
 
-#if !defined(ZeroPlatformNoShellSetMonitorCursorClip)
-void Shell::SetMonitorCursorClip(const IntRect& monitorRectangle)
-{
-}
-#endif
-
-#if !defined(ZeroPlatformNoShellClearMonitorCursorClip)
-void Shell::ClearMonitorCursorClip()
-{
-}
-#endif
-
-Cursor::Enum Shell::GetMouseCursor()
-{
-  return mCursor;
-}
-
-void Shell::SetMonitorCursorPosition(Math::IntVec2Param monitorPosition)
-{
-  SDL_WarpMouseGlobal(monitorPosition.x, monitorPosition.y);
-}
-
-Math::IntVec2 Shell::GetMonitorCursorPosition()
-{
-  IntVec2 result;
-  SDL_GetGlobalMouseState(&result.x, &result.y);
-  return result;
-}
-
 bool Shell::IsKeyDown(Keys::Enum key)
 {
   int numKeys = 0;
@@ -270,56 +241,6 @@ bool Shell::IsKeyDown(Keys::Enum key)
 bool Shell::IsMouseDown(MouseButtons::Enum button)
 {
   return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(MouseButtonToSDL(button))) != 0;
-}
-
-void Shell::SetMouseCursor(Cursor::Enum cursor)
-{
-  ZeroGetPrivateData(ShellPrivateData);
-  mCursor = cursor;
-
-  SDL_SystemCursor sdlSystemCursor = SDL_SYSTEM_CURSOR_ARROW;
-
-  switch (cursor)
-  {
-  case Cursor::Arrow:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_ARROW;
-    break;
-  case Cursor::Wait:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_WAIT;
-    break;
-  case Cursor::Cross:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_CROSSHAIR;
-    break;
-  case Cursor::SizeNWSE:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_SIZENWSE;
-    break;
-  case Cursor::SizeNESW:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_SIZENESW;
-    break;
-  case Cursor::SizeWE:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_SIZEWE;
-    break;
-  case Cursor::SizeNS:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_SIZENS;
-    break;
-  case Cursor::SizeAll:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_SIZEALL;
-    break;
-  case Cursor::TextBeam:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_IBEAM;
-    break;
-  case Cursor::Hand:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_HAND;
-    break;
-  case Cursor::Invisible:
-    sdlSystemCursor = SDL_SYSTEM_CURSOR_CROSSHAIR;
-    break;
-  default:
-    break;
-  }
-
-  SDL_Cursor* sdlCursor = self->mSDLCursors[sdlSystemCursor];
-  SDL_SetCursor(sdlCursor);
 }
 
 bool SDLGetClipboardText(String* out)
@@ -561,32 +482,6 @@ void Shell::Update()
         window->mOnKeyUp(SDLKeycodeToKey(e.key.keysym.sym), e.key.keysym.scancode, window);
       break;
     }
-    case SDL_MOUSEBUTTONDOWN:
-    {
-      ShellWindow* window = GetShellWindowFromSDLId(e.button.windowID);
-      if (window && window->mOnMouseDown)
-        window->mOnMouseDown(IntVec2(e.button.x, e.button.y), SDLToMouseButton(e.button.button), window);
-      break;
-    }
-    case SDL_MOUSEBUTTONUP:
-    {
-      ShellWindow* window = GetShellWindowFromSDLId(e.button.windowID);
-      if (window && window->mOnMouseUp)
-        window->mOnMouseUp(IntVec2(e.button.x, e.button.y), SDLToMouseButton(e.button.button), window);
-      break;
-    }
-    case SDL_MOUSEMOTION:
-    {
-      ShellWindow* window = GetShellWindowFromSDLId(e.motion.windowID);
-      if (window)
-      {
-        if (window->mOnMouseMove)
-          window->mOnMouseMove(IntVec2(e.motion.x, e.motion.y), window);
-        if (window->mOnRawMouseChanged)
-          window->mOnRawMouseChanged(IntVec2(e.motion.xrel, e.motion.yrel), window);
-      }
-      break;
-    }
 
     case SDL_MOUSEWHEEL:
     {
@@ -713,11 +608,9 @@ ShellWindow::ShellWindow(Shell* shell,
     mOnKeyUp(nullptr),
     mOnMouseDown(nullptr),
     mOnMouseUp(nullptr),
-    mOnMouseMove(nullptr),
     mOnMouseScrollY(nullptr),
     mOnMouseScrollX(nullptr),
     mOnDevicesChanged(nullptr),
-    mOnRawMouseChanged(nullptr),
     mOnHitTest(nullptr),
     mOnInputDeviceChanged(nullptr)
 {
