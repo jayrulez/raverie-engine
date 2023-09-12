@@ -17,12 +17,6 @@ DeclareEvent(FileDialogComplete);
 class OsWindow;
 struct FileDialogConfig;
 
-class OsShellHook
-{
-public:
-  virtual void HookUpdate() = 0;
-};
-
 /// Os Shell interface used to provide abstract platform user interface
 /// functionality. Used to manage mouse, keyboard, and clipboard functionality.
 class OsShell : public System
@@ -36,14 +30,8 @@ public:
   cstr GetName() override;
   void Update(bool debugger) override;
 
-  /// Name of the Shell's operating system.
-  String GetOsName();
-
   /// OS specific line-scroll setting when using the mouse scroll wheel.
   uint GetScrollLineCount();
-
-  /// Get the rectangle of the primary monitor (desktop size).
-  IntRect GetPrimaryMonitorRectangle();
 
   /// Get the size of the primary monitor (desktop size).
   IntVec2 GetPrimaryMonitorSize();
@@ -53,9 +41,6 @@ public:
 
   /// Set the cursor for the mouse.
   void SetMouseCursor(Cursor::Enum cursorId);
-
-  /// Get an image of the desktop / primary monitor.
-  bool GetPrimaryMonitorImage(Image* imageBuffer);
 
   /// Use the file open dialog.
   void OpenFile(FileDialogConfig* config);
@@ -70,14 +55,6 @@ public:
   /// How many OsWindows current exist
   size_t GetWindowCount();
   OsWindow* GetWindow(size_t index);
-
-  /// Debug helper to print out memory logging information
-  void DumpMemoryDebuggerStats();
-
-  /// If this is set we will call the HookUpdate function inside here
-  /// during the middle of our update after the keyboard has
-  /// been updated but before we send input events.
-  OsShellHook* mOsShellHook;
 
   // Internal
 
