@@ -160,22 +160,6 @@ void Shell::ShowMessageBox(StringParam title, StringParam message)
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, title.c_str(), message.c_str(), nullptr);
 }
 
-ShellWindow* GetShellWindowFromSDLId(Uint32 id)
-{
-  SDL_Window* sdlWindow = SDL_GetWindowFromID(id);
-  if (!sdlWindow)
-    return nullptr;
-
-  ShellWindow* window = (ShellWindow*)SDL_GetWindowData(sdlWindow, cShellWindow);
-  return window;
-}
-
-PlatformInputDevice* PlatformInputDeviceFromSDL(SDL_JoystickID id)
-{
-  Error("Not implemented");
-  return nullptr;
-}
-
 void UpdateResize(ShellWindow* window, IntVec2Param clientSize)
 {
   if (clientSize == window->mClientSize)
@@ -227,16 +211,6 @@ void Shell::Update()
       case SDL_WINDOWEVENT_SIZE_CHANGED:
         if (window->mOnClientSizeChanged)
           UpdateResize(window, IntVec2(e.window.data1, e.window.data2));
-        break;
-
-      case SDL_WINDOWEVENT_MINIMIZED:
-        if (window->mOnMinimized)
-          window->mOnMinimized(window);
-        break;
-
-      case SDL_WINDOWEVENT_RESTORED:
-        if (window->mOnRestored)
-          window->mOnRestored(window);
         break;
       }
       break;
@@ -306,13 +280,6 @@ void Shell::Update()
         ErrorIf(data.mHasImage, "Copying image data not yet supported");
       }
 #endif
-      break;
-    }
-    case SDL_KEYUP:
-    {
-      ShellWindow* window = GetShellWindowFromSDLId(e.key.windowID);
-      if (window && window->mOnKeyUp)
-        window->mOnKeyUp(SDLKeycodeToKey(e.key.keysym.sym), e.key.keysym.scancode, window);
       break;
     }
 
@@ -388,8 +355,6 @@ ShellWindow::ShellWindow(Shell* shell,
     mOnFocusChanged(nullptr),
     mOnMouseDropFiles(nullptr),
     mOnClientSizeChanged(nullptr),
-    mOnMinimized(nullptr),
-    mOnRestored(nullptr),
     mOnMouseDown(nullptr),
     mOnMouseUp(nullptr),
     mOnMouseScrollY(nullptr),
@@ -713,11 +678,6 @@ float ShellWindow::GetProgress()
 void ShellWindow::SetProgress(ProgressType::Enum progressType, float progress)
 {
   mProgress = progress;
-}
-
-void ShellWindow::PlatformSpecificFixup()
-{
-  // SDL doesn't need anything special here.
 }
 
 bool ShellWindow::HasOwnMinMaxExitButtons()
