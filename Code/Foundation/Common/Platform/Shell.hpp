@@ -248,9 +248,9 @@ const uint DpadRight = 0x92;
 const uint DpadLeft = 0x93;
 } // namespace UsbUsage
 
-ZeroShared HashMap<uint, String>& GetUsageNames();
+HashMap<uint, String>& GetUsageNames();
 
-class ZeroShared PlatformAxis
+class PlatformAxis
 {
 public:
   String mName;
@@ -262,7 +262,7 @@ public:
   bool mCanBeDisabled;
 };
 
-class ZeroShared PlatformButton
+class PlatformButton
 {
 public:
   String mName;
@@ -270,7 +270,7 @@ public:
   uint mBit;
 };
 
-class ZeroShared PlatformInputDevice
+class PlatformInputDevice
 {
 public:
   OsHandle mDeviceHandle;
@@ -410,7 +410,6 @@ public:
               StringParam windowName,
               Math::IntVec2Param clientSize,
               Math::IntVec2Param monitorClientPos,
-              ShellWindow* parentWindow,
               WindowStyleFlags::Enum flags,
               WindowState::Enum state);
 
@@ -510,13 +509,6 @@ public:
   /// Resize or move the window using the default OS method.
   void ManipulateWindow(WindowBorderArea::Enum area);
 
-  /// Returns the last value to SetProgress (default 0).
-  float GetProgress();
-
-  /// Sets the progress visible to the operating system (for example, when
-  /// downloading a file).
-  void SetProgress(ProgressType::Enum progressType, float progress);
-
   /// If this window has it's own buttons, then we may not need to draw our own.
   bool HasOwnMinMaxExitButtons();
 
@@ -575,8 +567,6 @@ public:
   BitField<WindowStyleFlags::Enum> mStyle;
 
   ShellWindow* mParent;
-
-  float mProgress;
 
   ZeroDeclarePrivateData(ShellWindow, 64);
 };

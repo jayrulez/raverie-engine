@@ -2,7 +2,6 @@
 namespace Zero
 {
 
-DeclareEnum2(LatencyValues, LowLatency, HighLatency);
 DeclareEnum2(StreamTypes, Output, Input);
 DeclareEnum6(StreamStatus, Uninitialized, Initialized, Started, Stopped, ApiProblem, DeviceProblem);
 
@@ -39,35 +38,6 @@ public:
 
 private:
   OsHandle PlatformData;
-};
-
-DeclareEnum7(MidiEventType, MidiNoteOn, MidiNoteOff, MidiPitchWheel, MidiVolume, MidiModWheel, MidiControl, NotSet);
-
-// MIDI Data
-
-class MidiData
-{
-public:
-  MidiEventType::Enum mEventType;
-  int mData1;
-  float mData2;
-  float mData3;
-};
-
-class MidiInput;
-typedef void (*MidiDataCallback)(MidiData* data, MidiInput* input);
-
-// MIDI Input
-
-class MidiInput
-{
-public:
-  MidiInput();
-  ~MidiInput();
-
-  MidiDataCallback mOnMidiData;
-  void* mUserData;
-  OsHandle mHandle;
 };
 
 } // namespace Zero
