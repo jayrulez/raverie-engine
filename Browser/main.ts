@@ -1,4 +1,3 @@
-import RaverieEngineWorker from "./worker.ts?worker";
 import Logo from "./logo.png?data-url";
 import {
   Cursor,
@@ -52,21 +51,38 @@ export interface RaverieEngine {
   removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
 
+export interface RaverieEngineConfig {
+  parent: HTMLElement;
+  workerUrl: string;
+  wasmUrl: string;
+  args?: string | null;
+  projectArchive?: Uint8Array;
+  builtContentArchive?: Uint8Array;
+}
+
+type DestructFunction = () => void;
+
 export class RaverieEngine extends EventTarget {
   public readonly mainElement: HTMLDivElement;
-  public readonly canvas: HTMLCanvasElement;
+  private requestedAnimationFrame = -1;
 
-  public constructor(parent: HTMLElement, args: string, projectArchive: Uint8Array | null, builtContentArchive: Uint8Array | null) {
+  private destructables: DestructFunction[] = [];
+
+  public constructor(config: RaverieEngineConfig) {
     super();
     const mainElement = document.createElement("div");
     this.mainElement = mainElement;
     mainElement.style.position = "relative";
     mainElement.style.width = "100%";
     mainElement.style.height = "100%";
-    parent.append(mainElement);
+    mainElement.style.overflow = "hidden";
+    config.parent.append(mainElement);
+    this.destructables.push(() => {
+      mainElement.remove();
+      delete (this as any).mainElement;
+    });
     
     const canvas = document.createElement("canvas");
-    this.canvas = canvas;
     canvas.style.position = "absolute";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
@@ -74,8 +90,8 @@ export class RaverieEngine extends EventTarget {
     canvas.style.outline = "none";
     canvas.tabIndex = 1;
     const initialRect = mainElement.getBoundingClientRect();
-    canvas.width = initialRect.width;
-    canvas.height = initialRect.height;
+    canvas.width = initialRect.width * window.devicePixelRatio;
+    canvas.height = initialRect.height * window.devicePixelRatio;
     mainElement.append(canvas);
     const offscreenCanvas = canvas.transferControlToOffscreen();
     
@@ -109,6 +125,28 @@ export class RaverieEngine extends EventTarget {
     loadingCenter.style.flexDirection = "column";
     loadingCenter.style.alignItems = "center";
     loading.append(loadingCenter);
+
+    const loadingSheen = document.createElement("div");
+    loadingSheen.style.position = "absolute";
+    loadingSheen.style.width = "100%";
+    loadingSheen.style.height = "100%";
+    loadingSheen.style.background = "linear-gradient(-30deg, transparent 45%, white, transparent 55%)";
+    loadingSheen.style.mixBlendMode = "overlay";
+    loadingSheen.style.filter = "blur(3px)";
+    loadingSheen.animate(
+      [
+        { "backgroundPositionY": "-50vh" },
+        { "backgroundPositionY": "50vh" },
+      ],
+      {
+        duration: 2000,
+        direction: "alternate",
+        easing: "ease-in-out",
+        iterations: Infinity,
+      },
+    )
+
+    loading.append(loadingSheen);
     
     const logo = document.createElement("img");
     logo.src = Logo;
@@ -120,6 +158,7 @@ export class RaverieEngine extends EventTarget {
     loadingText.style.fontSize = "1em";
     loadingText.style.color = "#fff";
     loadingText.style.fontFamily = "monospace";
+    loadingText.textContent = "Downloading Runtime";
     loadingCenter.append(loadingText);
     
     // Force layout and set the opacity to 1 so it transitions
@@ -164,8 +203,8 @@ export class RaverieEngine extends EventTarget {
       window.URL.revokeObjectURL(url);
     }
     
-    const worker = new RaverieEngineWorker();
-    worker.addEventListener("message", (event: MessageEvent<ToMainMessageType>) => {
+    const worker = new Worker(config.workerUrl, {name: "RaverieWorker", type: "module"});
+    const onWorkerMessage = (event: MessageEvent<ToMainMessageType>) => {
       const data = event.data;
       switch (data.type) {
         case "yieldDraw":
@@ -287,6 +326,11 @@ export class RaverieEngine extends EventTarget {
             break;
           }
       }
+    };
+    worker.addEventListener("message", onWorkerMessage);
+    this.destructables.push(() => {
+      worker.terminate();
+      worker.removeEventListener("message", onWorkerMessage);
     });
     
     const workerPostMessage = <T extends ToWorkerMessageType>(message: T, transfer?: Transferable[]) => {
@@ -322,32 +366,37 @@ export class RaverieEngine extends EventTarget {
     
     workerPostMessage<MessageInitialize>({
       type: "initialize",
+      wasmUrl: config.wasmUrl,
       canvas: offscreenCanvas,
       audioPort: audio.workerPort,
-      args,
+      args: config.args,
       focused,
-      projectArchive,
-      builtContentArchive,
+      projectArchive: config.projectArchive,
+      builtContentArchive: config.builtContentArchive,
     }, [offscreenCanvas, audio.workerPort]);
+
+    const mouseCoords = (event: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        clientX: (event.clientX - rect.left) * window.devicePixelRatio,
+        clientY: (event.clientY - rect.top) * window.devicePixelRatio,
+      }
+    }
     
     canvas.addEventListener("mousemove", (event) => {
-      const rect = canvas.getBoundingClientRect();
       workerPostMessage<MessageMouseMove>({
         type: "mouseMove",
-        clientX: event.clientX - rect.left,
-        clientY: event.clientY - rect.top,
-        dx: event.movementX,
-        dy: event.movementY
+        ...mouseCoords(event),
+        dx: event.movementX * window.devicePixelRatio,
+        dy: event.movementY * window.devicePixelRatio
       });
     });
     
     canvas.addEventListener("wheel", (event) => {
       const SCROLL_SCALE = 1 / 60;
-      const rect = canvas.getBoundingClientRect();
       workerPostMessage<MessageMouseScroll>({
         type: "mouseScroll",
-        clientX: event.clientX - rect.left,
-        clientY: event.clientY - rect.top,
+        ...mouseCoords(event),
         scrollX: event.deltaX * SCROLL_SCALE,
         scrollY: -event.deltaY * SCROLL_SCALE,
       });
@@ -366,11 +415,9 @@ export class RaverieEngine extends EventTarget {
     }
     
     const onMouseButtonChanged = (event: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
       workerPostMessage<MessageMouseButtonChanged>({
         type: "mouseButtonChanged",
-        clientX: event.clientX - rect.left,
-        clientY: event.clientY - rect.top,
+        ...mouseCoords(event),
         button: mapMouseButton(event.button),
         state: (event.type === "mouseup") ? MouseState.Up : MouseState.Down
       });
@@ -531,16 +578,6 @@ export class RaverieEngine extends EventTarget {
       event.preventDefault();
     });
     
-    const copyCutHandler = (event: ClipboardEvent) => {
-      if (document.activeElement === canvas) {
-        workerPostMessage<MessageCopy>({
-          type: "copy",
-          isCut: event.type === "cut"
-        });
-        event.preventDefault();
-      }
-    };
-    
     const dropFiles = async (dataTransfer: DataTransfer, clientX: number, clientY: number) => {
       const files: MessagePartFile[] = [];
       for (const file of dataTransfer.files) {
@@ -558,10 +595,17 @@ export class RaverieEngine extends EventTarget {
       });
     }
     
-    // These two event handlers don't work on the canvas (only on document) so we must check focus
-    document.addEventListener("copy", copyCutHandler);
-    document.addEventListener("cut", copyCutHandler);
-    document.addEventListener("paste", (event) => {
+    const copyCutHandler = (event: ClipboardEvent) => {
+      if (document.activeElement === canvas) {
+        workerPostMessage<MessageCopy>({
+          type: "copy",
+          isCut: event.type === "cut"
+        });
+        event.preventDefault();
+      }
+    };
+    
+    const pasteHandler = (event: ClipboardEvent) => {
       if (document.activeElement === canvas) {
         let dataTransfer = event.clipboardData;
         if (emulatedClipboardText) {
@@ -584,6 +628,17 @@ export class RaverieEngine extends EventTarget {
           }
         }
       }
+    }
+    
+    // These two event handlers don't work on the canvas (only on document) so we must check focus
+    document.addEventListener("copy", copyCutHandler);
+    document.addEventListener("cut", copyCutHandler);
+    document.addEventListener("paste", pasteHandler);
+
+    this.destructables.push(() => {
+      document.removeEventListener("copy", copyCutHandler);
+      document.removeEventListener("cut", copyCutHandler);
+      document.removeEventListener("paste", pasteHandler);
     });
     
     // We have to prevent default on dragover otherwise it opens the file with it's usual behavior
@@ -594,8 +649,8 @@ export class RaverieEngine extends EventTarget {
     canvas.addEventListener("drop", (event) => {
       event.preventDefault();
       if (event.dataTransfer) {
-        const rect = canvas.getBoundingClientRect();
-        dropFiles(event.dataTransfer, event.clientX - rect.left, event.clientY - rect.top);
+        const coords = mouseCoords(event);
+        dropFiles(event.dataTransfer, coords.clientX, coords.clientY);
       }
     });
 
@@ -604,6 +659,10 @@ export class RaverieEngine extends EventTarget {
     }
     window.addEventListener("pointerdown", attemptStartAudio);
     window.addEventListener("keydown", attemptStartAudio);
+    this.destructables.push(() => {
+      window.removeEventListener("pointerdown", attemptStartAudio);
+      window.removeEventListener("keydown", attemptStartAudio);
+    });
 
     const updateFocus = () => {
       const hasFocus = checkFocus();
@@ -622,13 +681,18 @@ export class RaverieEngine extends EventTarget {
     window.addEventListener("focus", updateFocus);
     window.addEventListener("blur", updateFocus);
     document.addEventListener("visibilitychange", updateFocus);
+    this.destructables.push(() => {
+      window.removeEventListener("focus", updateFocus);
+      window.removeEventListener("blur", updateFocus);
+      document.removeEventListener("visibilitychange", updateFocus);
+    });
     
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         workerPostMessage<MessageSizeChanged>({
           type: "sizeChanged",
-          clientWidth: entry.contentRect.width,
-          clientHeight: entry.contentRect.height
+          clientWidth: entry.contentRect.width * window.devicePixelRatio,
+          clientHeight: entry.contentRect.height * window.devicePixelRatio
         });
       }
     });
@@ -636,6 +700,9 @@ export class RaverieEngine extends EventTarget {
     resizeObserver.observe(mainElement);
     
     document.addEventListener("pointerlockchange", updateMouseTrapped);
+    this.destructables.push(() => {
+      document.removeEventListener("pointerlockchange", updateMouseTrapped);
+    });
     
     const recaptureTrappedMouse = () => {
       if (mouseTrapped && document.pointerLockElement !== canvas) {
@@ -715,10 +782,21 @@ export class RaverieEngine extends EventTarget {
         }
 
         prevGamepads = gamepads;
-        requestAnimationFrame(doGamepadUpdate);
+        this.requestedAnimationFrame = requestAnimationFrame(doGamepadUpdate);
       }
 
       doGamepadUpdate();
+
+      this.destructables.push(() => {
+        cancelAnimationFrame(this.requestedAnimationFrame);
+      });
     };
+  }
+
+  public destroy() {
+    for (const destructable of this.destructables) {
+      destructable();
+    }
+    this.destructables.length = 0;
   }
 }

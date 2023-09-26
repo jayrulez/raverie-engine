@@ -17,7 +17,7 @@ RaverieDefineType(ProjectSettings, builder, type)
   RaverieBindDocumented();
   type->AddAttribute(ObjectAttributes::cCore);
 
-  RaverieBindFieldGetter(ProjectName);
+  RaverieBindFieldProperty(ProjectName);
   RaverieBindFieldGetter(ProjectFolder);
   RaverieBindFieldGetter(ContentFolder);
   RaverieBindFieldGetter(EditorContentFolder);
@@ -313,36 +313,6 @@ String ProjectDescription::GetTagsString(StringParam splitChar)
   // Now we can finally join all of the tags into one visual string
   tagText = String::JoinRange(splitChar, sortedTags.All());
   return tagText;
-}
-
-RaverieDefineType(FrameRateSettings, builder, type)
-{
-  RaverieBindComponent();
-  RaverieBindDocumented();
-  RaverieBindSetup(SetupMode::DefaultSerialization);
-
-  RaverieBindFieldProperty(mLimitFrameRate);
-  RaverieBindGetterSetterProperty(FrameRate);
-}
-
-void FrameRateSettings::Serialize(Serializer& stream)
-{
-  SerializeNameDefault(mLimitFrameRate, true);
-  SerializeNameDefault(mFrameRate, 60);
-}
-
-void FrameRateSettings::Initialize(CogInitializer& initializer)
-{
-}
-
-int FrameRateSettings::GetFrameRate()
-{
-  return mFrameRate;
-}
-
-void FrameRateSettings::SetFrameRate(int frameRate)
-{
-  mFrameRate = Math::Max(frameRate, 1);
 }
 
 RaverieDefineType(DebugSettings, builder, type)

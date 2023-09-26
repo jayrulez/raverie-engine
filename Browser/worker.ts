@@ -1,4 +1,3 @@
-import wasmUrl from "../Build/Active/Code/Editor/RaverieEditor/RaverieEditor.wasm?url";
 import {
   ToWorkerMessageType,
   MessageYieldDraw,
@@ -16,43 +15,12 @@ import {
   MessageGamepadVibrate,
   MessageAudioOutput,
   ToAudioMessageType,
-  AudioConstants,
   ToWorkerAudioMessageType
 } from "./shared";
 
-const fetchWithProgress = async (path: string, onProgress: (percent: number) => void) => {
-  const response = await fetch(path);
-  // May be incorrect if compressed
-  const contentLength = response.headers.get("Content-Length");
-  if (!contentLength) {
-    return response;
-  }
-
-  const totalBytes = parseInt(contentLength, 10);
-
-  let loadedBytes = 0;
-  const ts = new TransformStream<Uint8Array, Uint8Array>({
-    transform (chunk, ctrl) {
-      loadedBytes += chunk.byteLength;
-      onProgress(loadedBytes / totalBytes);
-      ctrl.enqueue(chunk)
-    }
-  });
-
-  return new Response(response.body?.pipeThrough(ts), response);
-}
-
 const mainPostMessage = <T extends ToMainMessageType>(message: T) => {
-  postMessage(message);
+postMessage(message);
 };
-
-const modulePromise = WebAssembly.compileStreaming(fetchWithProgress(wasmUrl, (percent) => {
-  mainPostMessage<MessageProgressUpdate>({
-    type: "progressUpdate",
-    text: "Downloading Runtime",
-    percent
-  });
-}));
 
 // GL
 type GLfloat = number;
@@ -78,14 +46,14 @@ type GLsizeiPointer = number;
 type CharPointer = number;
 
 const start = async (initMessage: MessageInitialize) => {
+  const modulePromise = WebAssembly.compileStreaming(fetch(initMessage.wasmUrl));
+
   // We need to buffer any messages we receive until we connect up our message 
   const bufferedMessages: MessageEvent<ToWorkerMessageType>[] = [];
   const onBufferMessage = (event: MessageEvent<ToWorkerMessageType>) => {
     bufferedMessages.push(event);
   }
   addEventListener("message", onBufferMessage);
-
-  const module = await modulePromise;
 
   const gl = initMessage.canvas.getContext("webgl2", {
     antialias: false,
@@ -640,6 +608,7 @@ const start = async (initMessage: MessageInitialize) => {
     }
   };
 
+  const module = await modulePromise;
   const instance = await WebAssembly.instantiate(module, imports);
 
   const memory = instance.exports.memory as WebAssembly.Memory;
@@ -682,11 +651,12 @@ const start = async (initMessage: MessageInitialize) => {
     audioPostMessage<MessageAudioOutput>({
       type: "audioOutput",
       id: data.id,
-      samplesPerChannel: new Float32Array(readBuffer(floatPtr, data.framesRequested * 4/*sizeof(float)*/ * AudioConstants.Channels)),
+      // Temporarily not including AudioConstants because it pulls in the shared.ts file and causes vite to output multiple files
+      samplesPerChannel: new Float32Array(readBuffer(floatPtr, data.framesRequested * 4/*sizeof(float)*/ * 2 /* AudioConstants.Channels */)),
     });
   };
 
-  const allocateAndCopy = (buffer: Uint8Array | null) => {
+  const allocateAndCopy = (buffer: Uint8Array | null | undefined) => {
     if (!buffer) {
       return 0;
     }
@@ -846,7 +816,7 @@ const start = async (initMessage: MessageInitialize) => {
     }
   }
 
-  const commandLineCharPtr = allocateNullTerminatedString(initMessage.args);
+  const commandLineCharPtr = allocateNullTerminatedString(initMessage.args || "");
   const projectArchiveBytePtr = allocateAndCopy(initMessage.projectArchive);
   const builtContentArchiveBytePtr = allocateAndCopy(initMessage.builtContentArchive);
   ExportInitialize(
